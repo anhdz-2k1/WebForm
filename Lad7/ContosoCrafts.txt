@@ -1,0 +1,231 @@
+Bước 1: Khởi tạo project ContosoCrafts.WebSite.
+Bước 2: + Thêm thư mục dữ liệu (wwwroot) product.json chứa dữ liệu các sản phẩm.
+ 	+ Trong thư mục Models khởi tạo Product.cs(Id,Maker,Image,Url,Title,Description,Ratings) chứa các biến của Project và hiển thị chúng.
+Bước 3: + Khởi tạo JsonFileProductService.cs trong thư mục Services chức các chức năng chính của dự án.
+Bước 4: + Chỉnh sửa file Startup.cs thêm services.AddTransient<JsonFileProductService>() vào trong hàm ConfigureServices.
+Bước 5: + Chỉnh sửa file Index.cshtml.cs
+	public IndexModel(ILogger<IndexModel> logger,
+             JsonFileProductService productService)
+        {
+            _logger = logger;
+            ProductService = productService;
+        }
+
+        public JsonFileProductService ProductService { get; }
+        public IEnumerable<Product> Products { get; private set; }
+
+        public void OnGet()
+        {
+            Products = ProductService.GetProducts();
+        }
+Bước 6: chỉnh sửa file Index.cshtml (dùng vào lặp foreach để hiện thị danh sách thông tin)
+	@foreach (var product in Model.Products)
+	{
+		<h2> @product.Title </h2>
+	}
+Bước 7: + Chỉnh sủa lại file site.css để qui định lại giao diện hiển thị
+Bước 8: + Chỉnh sửa UseEndpoints trong file start.cs để hiện thị danh thông thông tinh product trên api
+	endpoints.MapGet("/products", (context) => 
+	{
+    		var products = app.ApplicationServices.GetService<JsonFileProductService>().GetProducts();
+    		var json = JsonSerializer.Serialize<IEnumerable<Product>>(products);
+    		return context.Response.WriteAsync(json);
+	});
+Bước 9: + Tạo ProductController (API Controller) trong thư mực COntroller để qui định các chức năng(điểu khiển) của chương trình như in ra danh sách product
+	[ApiController]
+        [Route("[controller]")]
+    public class ProductsController : ControllerBase
+    {
+        public ProductsController(JsonFileProductService productService)
+        {
+            ProductService = productService;
+        }
+
+        public JsonFileProductService ProductService { get; }
+
+        [HttpGet]
+        public IEnumerable<Product> Get()
+        {
+            return ProductService.GetProducts();
+        }
+    }
+	+ sao đó thêm servies vào ConfigureServices trong Startup.cs và endpoints trong UseEndpoints
+		services.AddController()
+		endpoints.MapController()
+Bước 10 + Thêm chức năng Addrating trong file JsonFileService
+	public void AddRating(string productId, int rating)
+        {
+            var products = GetProducts();
+            var query = products.First(x => x.Id == productId);
+
+            if (query.Ratings == null)
+            {
+                query.Ratings = new int[] { rating };
+            }
+            else
+            {
+                var ratings = query.Ratings.ToList();
+                ratings.Add(rating);
+                query.Ratings = ratings.ToArray();
+            }
+
+            using (var outputStream = File.OpenWrite(JsonFileName))
+            {
+                JsonSerializer.Serialize<IEnumerable<Product>>(
+                    new Utf8JsonWriter(outputStream, new JsonWriterOptions
+                    {
+                        SkipValidation = true,
+                        Indented = true
+                    }),
+                    products
+                );
+            }
+        }
+	+ Trong ProductController.cs thêm chức năng  ActionResult
+	[Route("Rate")]
+        [HttpGet]
+        public ActionResult Get(
+            [FromQuery] string ProductId,
+            [FromQuery] int Rating)
+        {
+            ProductService.AddRating(ProductId, Rating);
+            return Ok();
+        } 
+ 	...........dể hoàn thiên chắc năng addRating 
+Bước 11: +) Tạo file ProductList.razor tromg folder Components
+ 	<div class="card-columns">
+    @foreach (var product in ProductService.GetProducts())
+    {
+        <div class="card" style="border: 2px solid #00ff21">
+            <div class="card-img" style="background-image: url('@product.Image');"></div>
+            <div class="card-body" style="height: 80px">
+                <h5 class="card-title">@product.Title</h5>
+            </div>
+            <div class="card-footer">
+                <small class="text-muted">
+
+                </small>
+            </div>
+        </div>
+        
+    }
+	</div>
+	+ Thêm sự kiện onclick để hiện thị ra sản phảm khi click
+Bước 12: Thêm 
+	@(await Html.RenderComponentAsync<ProductList>(RenderMode.ServerPrerendered))
+ ........ vào file index.cshtml
+Bước 13: Thêm chức năng xem chi tiết sản phảm trong file ProductList.razor
+	@if (selectedProduct != null)
+{
+    <div class="modal fade" id="productModal" tabindex="-1" role="dialog" aria-labelledby="productTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="productTitle">@selectedProduct.Title</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="card">
+                        <div class="card-img" style="background-image: url('@selectedProduct.Image');">
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">@selectedProduct.Description</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
+................................................
+@code 
+{
+    Product selectedProduct;
+    string selectedProductId;
+
+    void SelectProduct(string productId)
+    {
+      selectedProductId = productId;
+      selectedProduct = ProductService.GetProducts().First(x => x.Id == productId);
+    }
+}
+Bước 14: Hoàn thiện file ProductList.razor bằng cách thêm chức năng đánh giá sản phẩm
+	<div class="modal-footer">
+                    @if (voteCount == 0)
+                    {
+                        <span>Be the first to vote!</span>
+                    }
+                    else
+                    {
+                        <span>@voteCount @voteLabel</span>
+                    }
+                    @for (int i = 1; i < 6; i++)
+                    {
+                        var currentStar = i;
+                        if (i <= currentRating)
+                        {
+                            <span class="fa fa-star checked" @onclick="(e => SubmitRating(currentStar))"></span>
+                        }
+                        else
+                        {
+                            <span class="fa fa-star" @onclick="(e => SubmitRating(currentStar))"></span>
+                        }
+                    }
+         </div>
+.............................
+@code
+{
+    Product selectedProduct;
+    string selectedProductId;
+
+    void SelectProduct(string productId)
+    {
+        selectedProductId = productId;
+        selectedProduct = ProductService.GetProducts().First(x => x.Id == productId);
+        GetCurrentRating();
+    }
+
+    int currentRating = 0;
+    int voteCount = 0;
+    string voteLabel;
+
+    void GetCurrentRating()
+    {
+        if (selectedProduct.Ratings == null)
+        {
+            currentRating = 0;
+            voteCount = 0;
+        }
+        else
+        {
+            voteCount = selectedProduct.Ratings.Count();
+            voteLabel = voteCount > 1 ? "Votes" : "Vote";
+            currentRating = selectedProduct.Ratings.Sum() / voteCount;
+        }
+
+        System.Console.WriteLine($"Current rating for {selectedProduct.Id}: {currentRating}");
+    }
+
+    void SubmitRating(int rating)
+    {
+        System.Console.WriteLine($"Rating received for {selectedProduct.Id}: {rating}");
+        ProductService.AddRating(selectedProductId, rating);
+        SelectProduct(selectedProductId);
+    }
+}
+
+
+
+____________________________________________The End_____________________________________________
+
+	
+
+
+
