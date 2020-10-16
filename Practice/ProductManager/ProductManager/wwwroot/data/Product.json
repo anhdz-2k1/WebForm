@@ -1,0 +1,20 @@
+﻿[
+  {
+    "Id": 1,
+    "Name": "Tôi tư duy là chơi bóng",
+    "Price": 154000.000,
+    "Image": "https://salt.tikicdn.com/cache/w390/media/catalog/product/p/i/pirlo-ao--18.u3059.d20170918.t181225.944943.jpg"
+  },
+  {
+    "Id": 2,
+    "Name": "Hồi kí Zinedine Zidane",
+    "Price": 164000.000,
+    "Image": "https://salt.tikicdn.com/cache/w390/ts/product/e4/02/42/6f8bc2fda9bcf2f04292733f54dcd8b4.jpg"
+  },
+  {
+    "Id": 3,
+    "Name": "Hồi kí Sir Alex",
+    "Price": 154000.000,
+    "Image": "https://salt.tikicdn.com/cache/w390/ts/product/0d/49/60/fd7af5afdbea13e6ff3ae6429591b045.jpg"
+  }
+]
